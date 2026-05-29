@@ -1,0 +1,52 @@
+name: Convert Files to Markdown
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '**'
+
+jobs:
+  convert:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install MarkItDown
+        run: |
+          pip install markitdown
+
+      - name: Convert files to Markdown
+        run: |
+          mkdir -p output
+          for file in *; do
+            if [ -f "$file" ]; then
+              case "$file" in
+                *.pdf|*.docx|*.xlsx|*.pptx|*.csv|*.txt)
+                  echo "Converting $file"
+                  markitdown "$file" > "output/$file.md" || true
+                  ;;
+              esac
+            fi
+          done
+
+      - name: Create Master Markdown file
+        run: |
+          echo "# MASTER PROJECT FILE" > output/MASTER_PROJECT.md
+          for file in output/*.md; do
+            if [ "$(basename "$file")" != "MASTER_PROJECT.md" ]; then
+              echo "" >> output/MASTER_PROJECT.md
+              echo "---" >> output/MASTER_PROJECT.md
+              echo "# SOURCE FILE: $(basename "$file")" >> output/MASTER_PROJECT.md
+              echo "" >> output/MASTER_PROJECT.md
+              cat "$file" >> output/MASTER_PROJECT.md
+            fi
+          done
+
+      - name: Upload Markdown Output
+        uses: actions/upload-artifact@v4
+        with:
+          name: markdown-output
+          path: output/
